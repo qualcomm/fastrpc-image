@@ -14,5 +14,5 @@ RUN apt-get update && \
     pipx install dtschema && \
     curl "https://android.googlesource.com/platform/system/tools/mkbootimg/+/refs/heads/android12-release/mkbootimg.py?format=TEXT" | base64 --decode > /usr/bin/mkbootimg && \
     chmod +x /usr/bin/mkbootimg && \
-    chmod +x /usr/bin/generate_boot_bins.sh && \
+    chmod 755 /usr/bin/generate_boot_bins.sh && \
     rm -rf /var/lib/apt/lists/*
