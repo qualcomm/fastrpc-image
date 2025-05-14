@@ -241,3 +241,6 @@ fastboot erase dtbo
 fastboot reboot bootloader
 fastboot boot images/boot.img
 ```
+
+## License
+kmake-image is licensed under the [*BSD-3-clause License*](https://spdx.org/licenses/BSD-3-Clause.html). See [*LICENSE*](https://github.com/qualcomm-linux/kmake-image/blob/main/LICENSE) for the full license text.
