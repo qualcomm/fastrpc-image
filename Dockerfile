@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM public.ecr.aws/lts/ubuntu:24.04
 
 ENV ARCH=arm64
 ENV CROSS_COMPILE=aarch64-linux-gnu-
