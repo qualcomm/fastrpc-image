@@ -1,248 +1,185 @@
+```markdown
 # kmake-image
-Docker image for building the Linux kernel
 
-With engineers using a variety of different versions of Ubuntu, python etc,
-issues are often reported related to tasks such as performing DeviceTree
-validation with the upstream Linux kernel.
+Docker image for building the Linux kernel and related components.
 
-This project contains the recipe for a Docker image containing necessary tools
-for building the kernel, packaging boot.img (which contains kernel image along
-with dtb packed using mkbootimg tool) or efi.bin (which contains kernel image
-packed using ukify tool) and dtb.bin (which contains DeviceTree Blob), checking
-DeviceTree bindings and validating DeviceTree source, as well as a few handy
-shell aliases for invoking operations within the Docker environment.
+This project provides a Docker-based environment tailored for building the Linux kernel and associated binaries. It ensures consistency across development environments, especially when engineers use different versions of Ubuntu, Python, and other tools.
 
-## Installing docker
+## 🚀 Features
 
-If Docker isn't installed on your system yet, you can follow the instructions
-provided at Docker's official documentation.
+- Build the Linux kernel and FastRPC binaries
+- Package `boot.img`, `efi.bin`, and `dtb.bin`
+- Validate DeviceTree bindings and sources
+- Includes `ukify` and `mkbootimg` tools
+- Handy shell aliases for streamlined Docker usage
 
-https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
+---
 
-### Add user to the docker group
-```
+## 🐳 Docker Installation
+
+Follow the official Docker installation guide for Ubuntu:
+
+👉 https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
+
+### Add User to Docker Group
+
+```bash
 sudo usermod -aG docker $USER
 newgrp docker
 ```
 
-Restart your terminal, or log out and log in again, to ensure your user is
-added to the **docker** group (the output of `id` should contain *docker*).
+Restart your terminal or log out and back in. Verify with:
 
-## Generating kmake Docker image
-
-With docker installed, you can generate the docker image that will be used to
-operate on the kernel tree. Do this by running *docker build* in the directory
-where you cloned this project:
-
-```
-docker build -t kmake-image .
+```bash
+id
 ```
 
-## kmake-image-run
+---
 
-```
-alias kmake-image-run='docker run -it --rm --user $(id -u):$(id -g) --workdir="$PWD" -v "$(dirname $PWD)":"$(dirname $PWD)" kmake-image'
-```
+## 🔧 Build the Docker Image
 
-The **kmake-image-run** alias allow you to run commands within the Docker image
-generated above, passing any arguments along. The current directory is mirrored
-into the Docker environment, so any paths under the current directory remains
-valid in both environments.
+Clone this repository and build the Docker image:
 
-## kmake
-
-```
-alias kmake='kmake-image-run make'
-```
-
-The **kmake** alias runs *make* within the Docker image generated above,
-passing any arguments along. This can be used as a drop-in replacement for
-**make** in the kernel.
-
-Note that the image defines **CROSS_COMPILE=aarch64-linux-gnu-** and **ARCH=arm64**,
-under the assumption that you're cross compiling the Linux kernel for Arm64, using GCC.
-
-### Examples
-
-The following examples can be run in the root of a checked out Linux kernel
-workspace, where you typically would run *make*. The expected operations will
-be performed, using the tools in the Docker environment.
-
-Select arm64 defconfig and build the kernel:
-```
-kmake defconfig
-kmake -j$(nproc)
-```
-
-Perform check of all DeviceTree bindings:
-```
-kmake DT_CHECKER_FLAGS=-m dt_binding_check
-```
-
-Perform DeviceTree binding check, of a specific binding:
-```
-kmake DT_CHECKER_FLAGS=-m DT_SCHEMA_FILES=soc/qcom/qcom,smem.yaml dt_binding_check
-```
-
-Build *qcom/qcs6490-rb3gen2.dtb* and validate it against DeviceTree bindings:
-```
-kmake defconfig
-kmake qcom/qcs6490-rb3gen2.dtb CHECK_DTBS=1
-```
-
-## ukify
-
-[*ukify*](https://www.man7.org/linux/man-pages//man1/ukify.1.html) is conveniently included in the Docker image. Note that only the
-current directory is mirrored into the Docker environment, so relative paths
-outside the current one are not accessible.
-
-Run the generate_boot_bins.sh script to create efi.bin and dtb.bin using the ukify tool.
-
-### Examples
-The following example generates efi.bin and dtb.bin using ukify for QCS6490 RB3Gen2, as found
-in the upstream Linux Kernel:
-
-```
-# Generate efi.bin
-kmake-image-run generate_boot_bins.sh efi --ramdisk artifacts/ramdisk.gz \
-		--systemd-boot artifacts/systemd/usr/lib/systemd/boot/efi/systemd-bootaa64.efi \
-		--stub artifacts/systemd/usr/lib/systemd/boot/efi/linuxaa64.efi.stub \
-		--linux arch/arm64/boot/Image \
-		--cmdline "${CMDLINE}" \
-		--output images
-
-# Generate dtb.bin for targets that support device tree
-kmake-image-run generate_boot_bins.sh dtb --input kobj/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2.dtb \
-		--output images
-```
-This will generate required binaries in images directory.
-
-## mkbootimg
-
-*mkbootimg* is conveniently included in the Docker image. Note that only the
-current directory is mirrored into the Docker environment, so relative paths
-outside the current one are not accessible.
-
-### Examples
-
-The following example generates a *boot.img* for the SM8550 MTP using its
-device tree, as available in the upstream Linux kernel:
-```
-kmake-image-run mkbootimg \
-        --header_version 2 \
-        --kernel kobj/arch/arm64/boot/Image.gz \
-        --dtb kobj/arch/arm64/boot/dts/qcom/sm8550-mtp.dtb \
-        --cmdline "${CMDLINE}"
-        --ramdisk artifacts/ramdisk.gz \
-        --base 0x80000000 \
-        --pagesize 2048 \
-        --output boot.img
-```
-
-# TL;DR
-
-The following example captures how to fetch and build efi and dtb bins of the
-upstream Linux Kernel for QCS6490 Rb3Gen2.
-
-### 1. Clone kmake-image
-```
+```bash
 git clone git@github.com:qualcomm-linux/kmake-image.git
 cd kmake-image
 docker build -t kmake-image .
 ```
 
-### 2. Setup the aliases in your .bashrc
-```
+---
+
+## 🛠️ Setup Aliases
+
+Add the following to your `.bashrc` or shell config:
+
+```bash
 alias kmake-image-run='docker run -it --rm --user $(id -u):$(id -g) --workdir="$PWD" -v "$(dirname $PWD)":"$(dirname $PWD)" kmake-image'
 alias kmake='kmake-image-run make'
 ```
 
-### 3. Clone Linux Kernel Tree and other dependencies
+---
+
+## 🧪 Usage Examples
+
+### Build Kernel
+
+```bash
+kmake defconfig
+kmake -j$(nproc)
 ```
+
+### Validate DeviceTree Bindings
+
+```bash
+kmake DT_CHECKER_FLAGS=-m dt_binding_check
+kmake DT_CHECKER_FLAGS=-m DT_SCHEMA_FILES=soc/qcom/qcom,smem.yaml dt_binding_check
+```
+
+### Build and Validate DTB
+
+```bash
+kmake defconfig
+kmake qcom/qcs6490-rb3gen2.dtb CHECK_DTBS=1
+```
+
+---
+
+## 🧰 Generate Boot Binaries with `ukify`
+
+```bash
+kmake-image-run generate_boot_bins.sh efi --ramdisk artifacts/ramdisk.gz \
+  --systemd-boot artifacts/systemd/usr/lib/systemd/boot/efi/systemd-bootaa64.efi \
+  --stub artifacts/systemd/usr/lib/systemd/boot/efi/linuxaa64.efi.stub \
+  --linux arch/arm64/boot/Image \
+  --cmdline "${CMDLINE}" \
+  --output images
+
+kmake-image-run generate_boot_bins.sh dtb --input kobj/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2.dtb \
+  --output images
+```
+
+---
+
+## 📦 Generate `boot.img` with `mkbootimg`
+
+```bash
+kmake-image-run mkbootimg \
+  --header_version 2 \
+  --kernel kobj/arch/arm64/boot/Image.gz \
+  --dtb kobj/arch/arm64/boot/dts/qcom/sm8550-mtp.dtb \
+  --cmdline "${CMDLINE}" \
+  --ramdisk artifacts/ramdisk.gz \
+  --base 0x80000000 \
+  --pagesize 2048 \
+  --output images/boot.img
+```
+
+---
+
+## 🧩 Build FastRPC and Package into Ramdisk
+
+```bash
+git clone https://github.com/qualcomm/fastrpc/
+cd fastrpc
+export PATH="$PWD/gcc-linaro-7.5.0-2019.12-i686_aarch64-linux-gnu/bin/:$PATH"
+export CC=aarch64-linux-gnu-gcc
+export CXX=aarch64-linux-gnu-g++
+chmod 777 gitcompile
+./gitcompile --host=aarch64-linux-gnu
+
+mkdir -p fastrpc_dir/usr/{lib,bin}
+cp -rf src/.libs/lib{adsp,cdsp,sdsp}_default_listener.so* fastrpc_dir/usr/lib/
+cp -rf src/.libs/lib{adsprpc,cdsprpc,sdsprpc}.so* fastrpc_dir/usr/lib/
+cp -rf src/{adsprpcd,cdsprpcd,sdsprpcd} fastrpc_dir/usr/bin/
+cp -rf test/fastrpc_test test/linux/* test/v75/* fastrpc_dir/usr/bin/
+
+cd fastrpc_dir
+find . | cpio -o -H newc | gzip -9 > ../../fastrpc.cpio.gz
+```
+
+---
+
+## 🧬 Add DSP Firmware and Create Final Ramdisk
+
+```bash
+git clone https://github.com/linux-msm/hexagon-dsp-binaries.git
+git clone https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git
+
+mkdir -p firmware_dir/usr/lib/dsp/{adsp,cdsp,cdsp1,gdsp0,gdsp1}
+mkdir -p firmware_dir/lib/firmware/qcom/sa8775p
+
+cp hexagon-dsp-binaries/... firmware_dir/usr/lib/dsp/...
+cp linux-firmware/qcom/sa8775p/* firmware_dir/lib/firmware/qcom/sa8775p/
+
+cd firmware_dir
+find . | cpio -o -H newc | gzip -9 > ../../firmware.cpio.gz
 cd ..
-git clone git@github.com:qualcomm-linux/kernel.git
+cat firmware.cpio.gz fastrpc.cpio.gz > artifacts/ramdisk.gz
 ```
 
-#### Fetch Ramdisk (For arm64)
-```
-mkdir artifacts
-wget -O artifacts/ramdisk.gz https://snapshots.linaro.org/member-builds/qcomlt/testimages/arm64/1379/initramfs-test-image-qemuarm64-20230321073831-1379.rootfs.cpio.gz
-```
+---
 
-#### Fetch systemd boot binaries
-```
-wget -O artifacts/systemd-boot-efi.deb http://ports.ubuntu.com/pool/universe/s/systemd/systemd-boot-efi_255.4-1ubuntu8_arm64.deb
-dpkg-deb -xv artifacts/systemd-boot-efi.deb artifacts/systemd
-```
+## 📦 Package DLKMs into Ramdisk
 
-### 4. Build Kernel
-```
-cd linux
-kmake O=../kobj defconfig
-kmake O=../kobj -j$(nproc)
-kmake O=../kobj -j$(nproc) dir-pkg INSTALL_MOD_STRIP=1
-```
-
-### 5. Package DLKMs into ramdisk
-```
+```bash
 (cd ../kobj/tar-install ; find lib/modules | cpio -o -H newc -R +0:+0 | gzip -9 >> ../../artifacts/ramdisk.gz)
 ```
 
-### 6. Generate efi.bin
-```
-cd ..
-kmake-image-run generate_boot_bins.sh efi --ramdisk artifacts/ramdisk.gz \
-		--systemd-boot artifacts/systemd/usr/lib/systemd/boot/efi/systemd-bootaa64.efi \
-		--stub artifacts/systemd/usr/lib/systemd/boot/efi/linuxaa64.efi.stub \
-		--linux kobj/arch/arm64/boot/Image \
-		--cmdline "${CMDLINE}" \
-		--output images
-```
+---
 
-### 7. Generate dtb.bin for targets supporting device tree
-```
-kmake-image-run generate_boot_bins.sh dtb --input kobj/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2.dtb \
-		--output images
-```
+## ⚡ Flash Binaries to Device
 
-The resulting **efi.bin** and **dtb.bin** are gathered in images directory and is ready to be
-booted on a QCS6490 RB3Gen2.
-
-### 8. Flash the binaries
-```
+```bash
 fastboot flash efi images/efi.bin
 fastboot flash dtb_a images/dtb.bin
 fastboot reboot
 ```
 
-## Generate Boot.img
-For targets that support android boot image format, docker can be used to
-create a boot image.
-The following example demonstrates how to build a boot image of the upstream
-Linux kernel for the SM8550 MTP platform.
+---
 
-```
-cd ..
-kmake-image-run mkbootimg \
-        --header_version 2 \
-        --kernel kobj/arch/arm64/boot/Image.gz \
-        --dtb kobj/arch/arm64/boot/dts/qcom/sm8550-mtp.dtb \
-        --cmdline "${CMDLINE}" \
-        --ramdisk artifacts/ramdisk.gz \
-        --base 0x80000000 \
-        --pagesize 2048 \
-        --output images/boot.img
+## 📜 License
+
+This project is licensed under the https://spdx.org/licenses/BSD-3-Clause-Clear.html. See the https://github.com/qualcomm-linux/kmake-image/blob/main/LICENSE file for details.
 ```
 
-The resulting **boot.img** is ready to be booted on a SM8550 MTP. But as the
-overlay stored on the device is incompatible with the upstream DeviceTree
-source, this has to be disabled first.
-
-```
-fastboot erase dtbo
-fastboot reboot bootloader
-fastboot boot images/boot.img
-```
-
-## License
-kmake-image is licensed under the [*BSD-3-clause-clear License*](https://spdx.org/licenses/BSD-3-Clause-Clear.html). See [*LICENSE*](https://github.com/qualcomm-linux/kmake-image/blob/main/LICENSE) for the full license text.
+---
