@@ -179,7 +179,7 @@ fastboot reboot
 
 ## 📜 License
 
-This project is licensed under the https://spdx.org/licenses/BSD-3-Clause-Clear.html. See the https://github.com/qualcomm-linux/kmake-image/blob/main/LICENSE file for details.
+This project is licensed under the https://spdx.org/licenses/BSD-3-Clause-Clear.html. See the https://github.com/qualcomm-linux/fastrpc-image/blob/main/LICENSE file for details.
 ```
 
 ---
