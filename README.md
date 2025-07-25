@@ -1,9 +1,9 @@
-```markdown
-# kmake-image
 
-Docker image for building the Linux kernel and related components.
+# fastrpc-image
 
-This project provides a Docker-based environment tailored for building the Linux kernel and associated binaries. It ensures consistency across development environments, especially when engineers use different versions of Ubuntu, Python, and other tools.
+Docker image for building the FastRPC, Linux kernel and related components.
+
+This project provides a Docker-based environment tailored for building the FastRPC, Linux kernel and associated binaries. It ensures consistency across development environments, especially when engineers use different versions of Ubuntu, Python, and other tools.
 
 ## 🚀 Features
 
@@ -41,9 +41,9 @@ id
 Clone this repository and build the Docker image:
 
 ```bash
-git clone git@github.com:qualcomm-linux/kmake-image.git
-cd kmake-image
-docker build -t kmake-image .
+git clone git@github.com:qualcomm-linux/fastrpc-image.git
+cd fastrpc-image
+docker build -t fastrpc-image .
 ```
 
 ---
@@ -53,8 +53,8 @@ docker build -t kmake-image .
 Add the following to your `.bashrc` or shell config:
 
 ```bash
-alias kmake-image-run='docker run -it --rm --user $(id -u):$(id -g) --workdir="$PWD" -v "$(dirname $PWD)":"$(dirname $PWD)" kmake-image'
-alias kmake='kmake-image-run make'
+alias fastrpc-image-run='docker run -it --rm --user $(id -u):$(id -g) --workdir="$PWD" -v "$(dirname $PWD)":"$(dirname $PWD)" fastrpc-image'
+alias fmake='fastrpc-image-run make'
 ```
 
 ---
@@ -64,22 +64,22 @@ alias kmake='kmake-image-run make'
 ### Build Kernel
 
 ```bash
-kmake defconfig
-kmake -j$(nproc)
+fmake defconfig
+fmake -j$(nproc)
 ```
 
 ### Validate DeviceTree Bindings
 
 ```bash
-kmake DT_CHECKER_FLAGS=-m dt_binding_check
-kmake DT_CHECKER_FLAGS=-m DT_SCHEMA_FILES=soc/qcom/qcom,smem.yaml dt_binding_check
+fmake DT_CHECKER_FLAGS=-m dt_binding_check
+fmake DT_CHECKER_FLAGS=-m DT_SCHEMA_FILES=soc/qcom/qcom,smem.yaml dt_binding_check
 ```
 
 ### Build and Validate DTB
 
 ```bash
-kmake defconfig
-kmake qcom/qcs6490-rb3gen2.dtb CHECK_DTBS=1
+fmake defconfig
+fmake qcom/qcs6490-rb3gen2.dtb CHECK_DTBS=1
 ```
 
 ---
@@ -87,14 +87,14 @@ kmake qcom/qcs6490-rb3gen2.dtb CHECK_DTBS=1
 ## 🧰 Generate Boot Binaries with `ukify`
 
 ```bash
-kmake-image-run generate_boot_bins.sh efi --ramdisk artifacts/ramdisk.gz \
+fmake-image-run generate_boot_bins.sh efi --ramdisk artifacts/ramdisk.gz \
   --systemd-boot artifacts/systemd/usr/lib/systemd/boot/efi/systemd-bootaa64.efi \
   --stub artifacts/systemd/usr/lib/systemd/boot/efi/linuxaa64.efi.stub \
   --linux arch/arm64/boot/Image \
   --cmdline "${CMDLINE}" \
   --output images
 
-kmake-image-run generate_boot_bins.sh dtb --input kobj/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2.dtb \
+fmake-image-run generate_boot_bins.sh dtb --input kobj/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2.dtb \
   --output images
 ```
 
@@ -103,7 +103,7 @@ kmake-image-run generate_boot_bins.sh dtb --input kobj/arch/arm64/boot/dts/qcom/
 ## 📦 Generate `boot.img` with `mkbootimg`
 
 ```bash
-kmake-image-run mkbootimg \
+fmake-image-run mkbootimg \
   --header_version 2 \
   --kernel kobj/arch/arm64/boot/Image.gz \
   --dtb kobj/arch/arm64/boot/dts/qcom/sm8550-mtp.dtb \
