@@ -84,6 +84,65 @@ fmake qcom/qcs6490-rb3gen2.dtb CHECK_DTBS=1
 
 ---
 
+## 🧩 Build FastRPC using fastrpc-image
+
+```bash
+git clone https://github.com/qualcomm/fastrpc/
+cd fastrpc
+fastrpc-image-run ./gitcompile --host=aarch64-linux-gnu
+```
+
+## 🧩 Copy fastrpc binary and fastrpc test binary
+
+```bash
+  mkdir -p fastrpc_dir/usr/lib
+  mkdir -p fastrpc_dir/usr/bin
+  cp -rf src/.libs/libadsp_default_listener.so* fastrpc_dir/usr/lib/
+  cp -rf src/.libs/libadsprpc.so* fastrpc_dir/usr/lib/
+  cp -rf src/.libs/libcdsp_default_listener.so* fastrpc_dir/usr/lib/
+  cp -rf src/.libs/libcdsprpc.so* fastrpc_dir/usr/lib/
+  cp -rf src/.libs/libsdsp_default_listener.so* fastrpc_dir/usr/lib/
+  cp -rf src/.libs/libsdsprpc.so* fastrpc_dir/usr/lib/
+  cp -rf src/adsprpcd src/cdsprpcd src/sdsprpcd fastrpc_dir/usr/bin/
+
+  # Copy fastrpc test binary
+  cp -rf test/fastrpc_test fastrpc_dir/usr/bin
+  cp -rf test/linux/* fastrpc_dir/usr/bin
+  cp -rf test/v75/* fastrpc_dir/usr/bin
+
+  cd fastrpc_dir
+  find . | cpio -o -H newc | gzip -9 > ../fastrpc.cpio.gz
+  cd ..
+  
+  cat fastrpc.cpio.gz > artifacts/ramdisk.gz
+```
+
+## 🧬 Add DSP Firmware into Ramdisk
+
+```bash
+git clone https://github.com/linux-msm/hexagon-dsp-binaries.git
+git clone https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git
+
+mkdir -p firmware_dir/usr/lib/dsp/{adsp,cdsp,cdsp1,gdsp0,gdsp1}
+mkdir -p firmware_dir/lib/firmware/qcom/sa8775p
+
+cp hexagon-dsp-binaries/... firmware_dir/usr/lib/dsp/...
+cp linux-firmware/qcom/sa8775p/* firmware_dir/lib/firmware/qcom/sa8775p/
+
+cd firmware_dir
+find . | cpio -o -H newc | gzip -9 > ../firmware.cpio.gz
+cd ..
+cat firmware.cpio.gz fastrpc.cpio.gz > artifacts/ramdisk.gz
+```
+
+## 📦 Package DLKMs into Ramdisk
+
+```bash
+(cd kobj/tar-install ; find lib/modules | cpio -o -H newc -R +0:+0 | gzip -9 >> ../../artifacts/ramdisk.gz)
+```
+
+---
+
 ## 🧰 Generate Boot Binaries with `ukify`
 
 ```bash
@@ -116,63 +175,18 @@ fmake-image-run mkbootimg \
 
 ---
 
-## 🧩 Build FastRPC and Package into Ramdisk
-
-```bash
-git clone https://github.com/qualcomm/fastrpc/
-cd fastrpc
-export PATH="$PWD/gcc-linaro-7.5.0-2019.12-i686_aarch64-linux-gnu/bin/:$PATH"
-export CC=aarch64-linux-gnu-gcc
-export CXX=aarch64-linux-gnu-g++
-chmod 777 gitcompile
-./gitcompile --host=aarch64-linux-gnu
-
-mkdir -p fastrpc_dir/usr/{lib,bin}
-cp -rf src/.libs/lib{adsp,cdsp,sdsp}_default_listener.so* fastrpc_dir/usr/lib/
-cp -rf src/.libs/lib{adsprpc,cdsprpc,sdsprpc}.so* fastrpc_dir/usr/lib/
-cp -rf src/{adsprpcd,cdsprpcd,sdsprpcd} fastrpc_dir/usr/bin/
-cp -rf test/fastrpc_test test/linux/* test/v75/* fastrpc_dir/usr/bin/
-
-cd fastrpc_dir
-find . | cpio -o -H newc | gzip -9 > ../../fastrpc.cpio.gz
-```
-
----
-
-## 🧬 Add DSP Firmware and Create Final Ramdisk
-
-```bash
-git clone https://github.com/linux-msm/hexagon-dsp-binaries.git
-git clone https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git
-
-mkdir -p firmware_dir/usr/lib/dsp/{adsp,cdsp,cdsp1,gdsp0,gdsp1}
-mkdir -p firmware_dir/lib/firmware/qcom/sa8775p
-
-cp hexagon-dsp-binaries/... firmware_dir/usr/lib/dsp/...
-cp linux-firmware/qcom/sa8775p/* firmware_dir/lib/firmware/qcom/sa8775p/
-
-cd firmware_dir
-find . | cpio -o -H newc | gzip -9 > ../../firmware.cpio.gz
-cd ..
-cat firmware.cpio.gz fastrpc.cpio.gz > artifacts/ramdisk.gz
-```
-
----
-
-## 📦 Package DLKMs into Ramdisk
-
-```bash
-(cd ../kobj/tar-install ; find lib/modules | cpio -o -H newc -R +0:+0 | gzip -9 >> ../../artifacts/ramdisk.gz)
-```
-
----
-
 ## ⚡ Flash Binaries to Device
 
 ```bash
 fastboot flash efi images/efi.bin
 fastboot flash dtb_a images/dtb.bin
 fastboot reboot
+```
+
+## ⚡ Flash `boot.img` to Device
+
+```bash
+fastboot flash boot images/boot.img
 ```
 
 ---
