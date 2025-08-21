@@ -44,6 +44,7 @@ RUN apt-get update && \
         gcc-aarch64-linux-gnu libc6-dev-arm64-cross \
         python3-dev python3-pip swig yamllint python3-setuptools python3-wheel \
         yq automake \
+        lavacli clang-15 lld-15 systemd-ukify \
         gh gcc g++ make autoconf libtool libelf-dev tar xz-utils llvm llvm-dev util-linux initramfs-tools pkg-config \
         abigail-tools sparse wget \
         apt-transport-https apt-utils fuseext2 \
