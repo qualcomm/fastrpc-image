@@ -50,7 +50,8 @@ RUN apt-get update && \
         apt-transport-https apt-utils fuseext2 \
         chrpath cpio debianutils diffstat file gawk gpg-agent iputils-ping locales liblz4-tool libsdl1.2-dev \
         openssh-client python3-git python3-pexpect python3-software-properties socat software-properties-common texinfo \
-        tmux unzip vim xterm zstd && \
+        tmux unzip vim xterm zstd \
+        libyaml-dev && \
     # Using --break-system-packages for pip is fine for Dockerfiles if intended.
     python3 -m pip install --break-system-packages dtschema==2024.11 jinja2 ply GitPython requests kas==4.7 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
