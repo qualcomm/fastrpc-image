@@ -11,8 +11,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     STRIP=aarch64-linux-gnu-strip \
     LC_ALL=en_US.UTF-8 \
     LANG=en_US.UTF-8 \
-    LANGUAGE=en_US.UTF-8
-
+    LANGUAGE=en_US.UTF-8 \
+    PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
 ARG USER
 ARG USER_ID
 ARG GROUP_ID
@@ -35,13 +35,33 @@ RUN ln -snf /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
         echo 'APT::Get::Assume-Yes "1";'; \
     } > /etc/apt/apt.conf.d/99local
 
+# Configure sources: amd64 from archive/security; arm64 from ports
+RUN dpkg --add-architecture arm64 && \
+    CODENAME="$(. /etc/os-release; echo "${VERSION_CODENAME}")" && \
+    : "${CODENAME:?Failed to read VERSION_CODENAME}" && \
+    { \
+      echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu ${CODENAME} main restricted universe multiverse"; \
+      echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu ${CODENAME}-updates main restricted universe multiverse"; \
+      echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu ${CODENAME}-backports main restricted universe multiverse"; \
+      echo "deb [arch=amd64] http://security.ubuntu.com/ubuntu ${CODENAME}-security main restricted universe multiverse"; \
+    } > /etc/apt/sources.list && \
+    { \
+      echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports ${CODENAME} main restricted universe multiverse"; \
+      echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports ${CODENAME}-updates main restricted universe multiverse"; \
+      echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports ${CODENAME}-backports main restricted universe multiverse"; \
+      echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports ${CODENAME}-security main restricted universe multiverse"; \
+    } > /etc/apt/sources.list.d/arm64-ports.list && \
+    rm -f /etc/apt/sources.list.d/ubuntu.sources || true && \
+    apt-get clean && \
+    apt-get update
+
+
 # Install required packages and perform other setup in a single, optimized layer
 # Combine apt-get update and install for better caching and smaller layers.
 # Ensure all commands that modify the filesystem are done before cleanup.
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+RUN apt-get install -y --no-install-recommends \
         build-essential git flex bison bc libssl-dev curl kmod rsync mtools dosfstools \
-        gcc-aarch64-linux-gnu libc6-dev-arm64-cross \
+        gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross \
         python3-dev python3-pip swig yamllint python3-setuptools python3-wheel \
         yq automake \
         lavacli clang-15 lld-15 systemd-ukify \
@@ -51,7 +71,7 @@ RUN apt-get update && \
         chrpath cpio debianutils diffstat file gawk gpg-agent iputils-ping locales liblz4-tool libsdl1.2-dev \
         openssh-client python3-git python3-pexpect python3-software-properties socat software-properties-common texinfo \
         tmux unzip vim xterm zstd \
-        libyaml-dev && \
+        libyaml-dev libyaml-0-2:arm64 libyaml-dev:arm64 && \
     # Using --break-system-packages for pip is fine for Dockerfiles if intended.
     python3 -m pip install --break-system-packages dtschema==2024.11 jinja2 ply GitPython requests kas==4.7 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
