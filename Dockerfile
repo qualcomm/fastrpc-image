@@ -70,7 +70,7 @@ RUN apt-get install -y --no-install-recommends \
         apt-transport-https apt-utils fuseext2 \
         chrpath cpio debianutils diffstat file gawk gpg-agent iputils-ping locales liblz4-tool libsdl1.2-dev \
         openssh-client python3-git python3-pexpect python3-software-properties socat software-properties-common texinfo \
-        tmux unzip vim xterm zstd \
+        tmux zip unzip vim xterm zstd \
         libyaml-dev libyaml-0-2:arm64 libyaml-dev:arm64 \
         libbsd-dev:arm64 && \
     # Using --break-system-packages for pip is fine for Dockerfiles if intended.
