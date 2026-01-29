@@ -115,12 +115,15 @@ RUN set -eux; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
-# Install Linaro GCC toolchain
-RUN set -eux; \
-    wget -qO /tmp/gcc-linaro.tar.xz \
-      https://releases.linaro.org/components/toolchain/binaries/latest-7/aarch64-linux-gnu/gcc-linaro-7.5.0-2019.12-i686_aarch64-linux-gnu.tar.xz; \
-    tar xf /tmp/gcc-linaro.tar.xz -C /usr/local/; \
-    rm -f /tmp/gcc-linaro.tar.xz
+# Install autotools
+RUN apt-get update -o Acquire::Retries=5 && \
+    apt-get install -y --no-install-recommends \
+        autoconf \
+        automake \
+        libtool \
+        autoconf-archive \
+        pkg-config && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install mkbootimg
 RUN set -eux; \
