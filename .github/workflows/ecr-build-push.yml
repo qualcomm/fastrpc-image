@@ -1,0 +1,134 @@
+
+name: CI — Build & Push fastrpc-image to ECR
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      ecr-repo:
+        description: "ECR repository name (without registry URL)"
+        required: false
+        default: "fastrpc-image"
+      region:
+        description: "AWS region for ECR"
+        required: false
+        default: "us-west-2"
+
+permissions:
+  contents: read
+  id-token: write    # required for AWS OIDC federation
+
+env:
+  IMAGE_NAME: fastrpc-image
+
+jobs:
+  build-and-push:
+    name: Build & Push
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    # Adjust concurrency as you like (prevents overlapping pushes on the same ref)
+    concurrency:
+      group: ecr-${{ github.ref }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # (Optional) Lint Dockerfile early
+      # - name: Hadolint
+      #   uses: hadolint/hadolint-action@v3.1.0
+      #   with:
+      #     dockerfile: Dockerfile
+
+      - name: Set up QEMU (for multi-arch emulation, harmless if unused)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+
+      # ---------- Configure AWS via OIDC ----------
+      # Create an IAM role in your AWS account with a trust policy for your GH org/repo
+      # and attach ECR permissions (ecr:BatchCheckLayerAvailability, ecr:CompleteLayerUpload, ecr:InitiateLayerUpload, ecr:PutImage, ecr:UploadLayerPart, ecr:GetAuthorizationToken, ecr:CreateRepository (optional)).
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}      # e.g., arn:aws:iam::<ACCOUNT_ID>:role/github-oidc-ecr
+          aws-region: ${{ github.event.inputs.region || 'us-west-2' }}
+
+      - name: Get AWS account ID
+        id: aws
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          echo "account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ---------- Build metadata & tags ----------
+      - name: Compute image tags
+        id: meta
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${GITHUB_SHA::7}"
+          BRANCH="${GITHUB_REF_NAME}"
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          # ECR repo name preference: input > default
+          ECR_REPO="${{ github.event.inputs.ecr-repo || 'fastrpc-image' }}"
+          echo "ecr_repo=$ECR_REPO" >> "$GITHUB_OUTPUT"
+
+      # ---------- Cache for faster builds ----------
+      - name: Prepare cache key
+        id: cachekeys
+        run: echo "dateKey=$(date +%Y-%m)" >> $GITHUB_OUTPUT
+
+      - name: Cache docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: buildx-${{ steps.meta.outputs.ecr_repo }}-${{ steps.cachekeys.outputs.dateKey }}-${{ github.sha }}
+          restore-keys: |
+            buildx-${{ steps.meta.outputs.ecr_repo }}-${{ steps.cachekeys.outputs.dateKey }}-
+
+      # ---------- Build & (conditionally) Push ----------
+      - name: Build image (no push on PR)
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          set -eux
+          docker build \
+            --progress=plain \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            --cache-from=type=local,src=/tmp/.buildx-cache \
+            --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            -t $IMAGE_NAME:${{ steps.meta.outputs.short_sha }} \
+            .
+
+      - name: Build & push to ECR (push/main or manual runs)
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          cache-from: |
+            type=local,src=/tmp/.buildx-cache
+          cache-to: |
+            type=local,dest=/tmp/.buildx-cache-new,mode=max
+          tags: |
+            ${{ steps.aws.outputs.account_id }}.dkr.ecr.${{ github.event.inputs.region || 'us-west-2' }}.amazonaws.com/${{ steps.meta.outputs.ecr_repo }}:${{ steps.meta.outputs.short_sha }}
+            ${{ github.ref_name == 'main' && format('{0}.dkr.ecr.{1}.amazonaws.com/{2}:latest', steps.aws.outputs.account_id, github.event.inputs.region || 'us-west-2', steps.meta.outputs.ecr_repo) || '' }}
+
+      - name: Promote cache
+        run: |
+          set -eux
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
